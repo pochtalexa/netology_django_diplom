@@ -24,8 +24,9 @@ class ProductReviewSerializer(serializers.ModelSerializer):
 
     def validate_product(self, value):
         author = self.context['request'].user
+        action = self.context['view'].action
         product_reviews = ProductReview.objects.filter(author=author, product=value).count()
-        if product_reviews:
+        if product_reviews and action == 'create':
             raise serializers.ValidationError("You can save only one review for the same product")
 
         return value
@@ -56,6 +57,7 @@ class OrderPositionsSerializer(serializers.ModelSerializer):
 
 
 class OrderSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)
     positions = OrderPositionsSerializer(many=True, source='orderpositions_set')
     sum = serializers.IntegerField(required=False)
     user = serializers.CharField(required=False)

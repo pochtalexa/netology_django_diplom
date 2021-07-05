@@ -12,6 +12,12 @@ class TestProductCollectionViewSet:
     def set_up(self):
         pass
 
+    def create_user(self, user_name, is_admin):
+        self.user = User.objects.create(username=user_name, is_staff=is_admin, is_active=True, is_superuser=False)
+        self.token = Token.objects.create(user=self.user)
+
+        return self.user, self.token
+
     @pytest.mark.django_db
     def test_collection_create_unauthorized(self):
         self.collection_payload = {
@@ -26,9 +32,7 @@ class TestProductCollectionViewSet:
 
     @pytest.mark.django_db
     def test_collection_create_admin(self):
-        self.user_admin = User.objects.create(username='admin', is_staff=True, is_active=True, is_superuser=False)
-        self.user_token = Token.objects.create(user=self.user_admin)
-
+        self.user_admin, self.admin_token = self.create_user('admin', True)
         self.product = Product.objects.create(title='Огурец', description='Огурцы', price=1)
 
         self.collection_payload = {
@@ -38,18 +42,15 @@ class TestProductCollectionViewSet:
         }
 
         self.client = APIClient()
-        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.user_token.key}')
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.admin_token.key}')
         self.url = reverse('product_collections-list')
         self.r = self.client.post(self.url, data=self.collection_payload)
         assert self.r.status_code == HTTP_201_CREATED
 
     @pytest.mark.django_db
     def test_collection_update_admin(self):
-        self.user_admin = User.objects.create(username='admin', is_staff=True, is_active=True, is_superuser=False)
-        self.user_token = Token.objects.create(user=self.user_admin)
-
+        self.user_admin, self.admin_token = self.create_user('admin', True)
         self.product = Product.objects.create(title='Огурец', description='Огурцы', price=1)
-
         self.collection = ProductCollection.objects.create(title='Коллекция 1', description='Описание коллекции 1')
         # self.collection.selection.set(self.product)
         self.collection.selection.add(self.product)
@@ -61,12 +62,12 @@ class TestProductCollectionViewSet:
         }
 
         self.client = APIClient()
-        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.user_token.key}')
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.admin_token.key}')
         self.url = reverse('product_collections-detail', args=[self.collection.id])
         self.r = self.client.patch(self.url, data=self.collection_payload)
         assert self.r.status_code == HTTP_200_OK
 
-        self.collection_description = list(ProductCollection.objects.filter(title='Коллекция 2'))[0].description
+        self.collection_description = ProductCollection.objects.filter(title='Коллекция 2')[0].description
         assert str(self.collection_description) == 'Описание коллекции 2'
 
     @pytest.mark.django_db
@@ -113,8 +114,7 @@ class TestProductCollectionViewSet:
 
     @pytest.mark.django_db
     def test_collection_destroy_admin(self):
-        self.user_admin = User.objects.create(username='admin', is_staff=True, is_active=True, is_superuser=False)
-        self.user_token = Token.objects.create(user=self.user_admin)
+        self.user_admin, self.admin_token = self.create_user('admin', True)
 
         self.collections = ProductCollection.objects.bulk_create([
             ProductCollection(title='Коллекция 1', description='Описание коллекции 1'),
@@ -123,7 +123,7 @@ class TestProductCollectionViewSet:
         ])
 
         self.client = APIClient()
-        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.user_token.key}')
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.admin_token.key}')
         self.url = reverse('product_collections-detail', args=[self.collections[0].id])
         self.r = self.client.delete(self.url)
         assert self.r.status_code == HTTP_204_NO_CONTENT

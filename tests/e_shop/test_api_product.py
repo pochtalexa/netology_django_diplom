@@ -12,6 +12,12 @@ class TestProductsViewSet:
     def set_up(self):
         pass
 
+    def create_user(self, user_name, is_admin):
+        self.user = User.objects.create(username=user_name, is_staff=is_admin, is_active=True, is_superuser=False)
+        self.token = Token.objects.create(user=self.user)
+
+        return self.user, self.token
+
     @pytest.mark.django_db
     def test_product_db(self):
         self.product_1 = Product.objects.create(title='Огурец', description='Огурцы', price=1)
@@ -41,8 +47,8 @@ class TestProductsViewSet:
             'description': 'Огурцы',
             'price': 1
         }
-        self.admin_user = User.objects.create(username='admin', is_staff=True, is_active=True, is_superuser=True)
-        self.admin_token = Token.objects.create(user=self.admin_user)
+
+        self.user_admin, self.admin_token = self.create_user('admin', True)
         self.client = APIClient()
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.admin_token.key}')
         self.url = reverse('products-list')
@@ -62,15 +68,15 @@ class TestProductsViewSet:
             'description': 'Огурцы_1',
             'price': 55
         }
-        self.admin_user = User.objects.create(username='admin', is_staff=True, is_active=True, is_superuser=True)
-        self.admin_token = Token.objects.create(user=self.admin_user)
+
+        self.user_admin, self.admin_token = self.create_user('admin', True)
         self.client = APIClient()
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.admin_token.key}')
         self.url = reverse("products-detail", args=[self.products[0].id])
         self.r = self.client.patch(self.url, data=self.product_payload)
         assert self.r.status_code == HTTP_200_OK
 
-        self.product_1_desc = list(Product.objects.filter(title='Огурец_1'))[0].description
+        self.product_1_desc = Product.objects.filter(title='Огурец_1')[0].description
         assert self.product_1_desc == 'Огурцы_1'
 
     @pytest.mark.django_db
@@ -85,15 +91,14 @@ class TestProductsViewSet:
             'price': 55
         }
 
-        self.admin_user = User.objects.create(username='admin', is_staff=True, is_active=True, is_superuser=True)
-        self.admin_token = Token.objects.create(user=self.admin_user)
+        self.user_admin, self.admin_token = self.create_user('admin', True)
         self.client = APIClient()
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.admin_token.key}')
         self.url = reverse("products-detail", args=[self.products[0].id])
         self.r = self.client.patch(self.url, data=self.product_payload)
         assert self.r.status_code == HTTP_200_OK
 
-        self.product_1_desc = list(Product.objects.filter(title='Огурец'))[0].price
+        self.product_1_desc = Product.objects.filter(title='Огурец')[0].price
         assert self.product_1_desc == 55
 
     @pytest.mark.django_db
@@ -158,8 +163,7 @@ class TestProductsViewSet:
             Product(title='Банан', description='Бананы', price=3)
         ])
 
-        self.admin_user = User.objects.create(username='admin', is_staff=True, is_active=True, is_superuser=True)
-        self.admin_token = Token.objects.create(user=self.admin_user)
+        self.user_admin, self.admin_token = self.create_user('admin', True)
         self.client = APIClient()
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.admin_token.key}')
         self.url = reverse("products-detail", args=[self.products[0].id])

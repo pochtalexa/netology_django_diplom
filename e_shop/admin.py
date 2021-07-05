@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Product, ProductReview, Order, ProductCollection, OrderPositions
+from django.db import models
 
 
 class ProductCollectionInLine(admin.TabularInline):
@@ -14,12 +15,15 @@ class OrderPositionsInLine(admin.TabularInline):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    inlines = [
-        ProductCollectionInLine,
-        OrderPositionsInLine
-    ]
+    list_display = ['title', 'created_at']
 
-    readonly_fields = ('created_at', 'updated_at')
+    # inlines = [
+    #     ProductCollectionInLine,
+    #     OrderPositionsInLine
+    # ]
+    #
+    # readonly_fields = ('created_at', 'updated_at')
+    pass
 
 
 @admin.register(ProductCollection)
@@ -38,6 +42,24 @@ class ProductReviewAdmin(admin.ModelAdmin):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
+    list_display = ['created_at', 'user', 'get_product_sum']
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        qs = qs.annotate(product_sum=models.Sum('orderpositions__quantity'))
+
+        return qs
+
+    def get_product_sum(self, obj):
+        return obj.product_sum
+
+    get_product_sum.admin_order_field = 'product_sum'
+    get_product_sum.short_description = 'количество товаров'
+
+
+
+
+
     inlines = [
         OrderPositionsInLine
     ]

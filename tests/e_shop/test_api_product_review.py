@@ -12,9 +12,15 @@ class TestProductReviewViewSet:
     def set_up(self):
         pass
 
+    def create_user(self, user_name, is_admin):
+        self.user = User.objects.create(username=user_name, is_staff=is_admin, is_active=True, is_superuser=False)
+        self.token = Token.objects.create(user=self.user)
+
+        return self.user, self.token
+
     @pytest.mark.django_db
     def test_product_review_create_unauthorized(self):
-        self.user_user = User.objects.create(username='user1', is_staff=False, is_active=True, is_superuser=False)
+        self.user_user, self.user_token = self.create_user('user1', False)
         self.id_author = self.user_user.id
 
         self.product = Product.objects.create(title='Огурец', description='Огурцы', price=1)
@@ -34,11 +40,8 @@ class TestProductReviewViewSet:
 
     @pytest.mark.django_db
     def test_product_review_create_authorized(self):
-        self.user_user = User.objects.create(username='user1', is_staff=False, is_active=True, is_superuser=False)
+        self.user_user, self.user_token = self.create_user('user1', False)
         self.id_author = self.user_user.id
-
-        self.user_token = Token.objects.create(user=self.user_user)
-
         self.product = Product.objects.create(title='Огурец', description='Огурцы', price=1)
         self.id_product = self.product.id
 
@@ -57,11 +60,8 @@ class TestProductReviewViewSet:
 
     @pytest.mark.django_db
     def test_product_review_create_authorized_invalid_mark(self):
-        self.user_user = User.objects.create(username='user1', is_staff=False, is_active=True, is_superuser=False)
+        self.user_user, self.user_token = self.create_user('user1', False)
         self.id_author = self.user_user.id
-
-        self.user_token = Token.objects.create(user=self.user_user)
-
         self.product = Product.objects.create(title='Огурец', description='Огурцы', price=1)
         self.id_product = self.product.id
 
@@ -80,11 +80,8 @@ class TestProductReviewViewSet:
 
     @pytest.mark.django_db
     def test_review_update_authorized(self):
-        self.user_user = User.objects.create(username='user1', is_staff=False, is_active=True, is_superuser=False)
+        self.user_user, self.user_token = self.create_user('user1', False)
         self.id_author = self.user_user.id
-
-        self.user_token = Token.objects.create(user=self.user_user)
-
         self.product = Product.objects.create(title='Огурец', description='Огурцы', price=1)
         self.id_product = self.product.id
 
@@ -98,9 +95,6 @@ class TestProductReviewViewSet:
         self.id_product_review = self.product_review.id
 
         self.review_payload = {
-            'author': self.id_author,
-            'product': self.id_product,
-            'review': 'тестовый отзыв о товаре 1',
             'mark': 5
         }
 
@@ -110,16 +104,13 @@ class TestProductReviewViewSet:
         self.r = self.client.patch(self.url, data=self.review_payload)
         assert self.r.status_code == HTTP_200_OK
 
-        self.product_review_mark = list(ProductReview.objects.filter(review='тестовый отзыв о товаре 1'))[0].mark
+        self.product_review_mark = ProductReview.objects.filter(review='тестовый отзыв о товаре')[0].mark
         assert self.product_review_mark == 5
 
     @pytest.mark.django_db
     def test_review_partial_update_authorized(self):
-        self.user_user = User.objects.create(username='user1', is_staff=False, is_active=True, is_superuser=False)
+        self.user_user, self.user_token = self.create_user('user1', False)
         self.id_author = self.user_user.id
-
-        self.user_token = Token.objects.create(user=self.user_user)
-
         self.product = Product.objects.create(title='Огурец', description='Огурцы', price=1)
         self.id_product = self.product.id
 
@@ -142,7 +133,7 @@ class TestProductReviewViewSet:
         self.r = self.client.patch(self.url, data=self.review_payload)
         assert self.r.status_code == HTTP_200_OK
 
-        self.product_review_mark = list(ProductReview.objects.filter(review='тестовый отзыв о товаре'))[0].mark
+        self.product_review_mark = ProductReview.objects.filter(review='тестовый отзыв о товаре')[0].mark
         assert self.product_review_mark == 5
 
     @pytest.mark.django_db
@@ -228,11 +219,11 @@ class TestProductReviewViewSet:
 
         self.client = APIClient()
         self.url = f'{reverse("product_reviews-list")}'
-        self.r = self.client.get(self.url, {'product': 'Банан'}, format='json')
+        self.r = self.client.get(self.url, {'description': 'Банан'}, format='json')
         assert self.r.status_code == HTTP_200_OK
 
         self.r_json = self.r.json()
-        assert self.r_json[0].get('review') == 'отзыв 3'
+        assert self.r_json[0].get('review') == 'отзыв 1'
 
     @pytest.mark.django_db
     def test_review_destroy_unauthorized(self):
